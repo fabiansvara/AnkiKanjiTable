@@ -125,6 +125,41 @@ class MyApp(QWidget):
         for cid in mw.col.find_cards(self.filterInput.text()):
             yield mw.col.get_card(cid)
 
+    def computeGroupStats(self, kanjiDataDict: KanjiDataDict) -> dict:
+        """Compute statistics for a group of kanji."""
+        strongIvl = self.strongIntervalSpin.value()
+        stats = {
+            "total": 0,
+            "strong": 0,      # ivl >= strongIvl
+            "learning": 0,    # 0 < ivl < strongIvl
+            "unseen": 0,      # ivl == 0 or None, but card exists
+            "missing": 0,     # no card at all
+        }
+        for kanjiData in kanjiDataDict.values():
+            stats["total"] += 1
+            ivl = kanjiData.data.get("ivl")
+            cid = kanjiData.data.get("cid")
+            
+            if cid is None:
+                stats["missing"] += 1
+            elif ivl is None or ivl == 0:
+                stats["unseen"] += 1
+            elif ivl >= strongIvl:
+                stats["strong"] += 1
+            else:
+                stats["learning"] += 1
+        return stats
+
+    def formatGroupStats(self, stats: dict) -> str:
+        """Format stats into a display string."""
+        return (
+            f"Total: {stats['total']} | "
+            f"Strong: {stats['strong']} | "
+            f"Learning: {stats['learning']} | "
+            f"Unseen: {stats['unseen']} | "
+            f"Missing: {stats['missing']}"
+        )
+
     def getKanjiCells(self, timeTravelDatetime: QDateTime = None) -> list[KanjiCell]:
         kanjiDatas = KanjiDataDict()
 
@@ -150,11 +185,18 @@ class MyApp(QWidget):
             levels = kanjiDatas.splitIntoLevels(selectedLevelSystem)
             r = []
             for levelName, kanjiDataDict in levels.items():
-                r.append(LevelCell(levelName))
+                stats = self.computeGroupStats(kanjiDataDict)
+                statsText = self.formatGroupStats(stats)
+                r.append(LevelCell(f"{levelName}  —  {statsText}"))
                 r += kanjiDataDict.toKanjiCells(sortFunc)
             return r
         else:
-            return kanjiDatas.toKanjiCells(sortFunc)
+            # Even without grouping, show overall stats in a header
+            stats = self.computeGroupStats(kanjiDatas)
+            statsText = self.formatGroupStats(stats)
+            r = [LevelCell(f"All Kanji  —  {statsText}")]
+            r += kanjiDatas.toKanjiCells(sortFunc)
+            return r
 
     def buildGUI(self) -> None:
         self.mainLayout = QHBoxLayout(self)
