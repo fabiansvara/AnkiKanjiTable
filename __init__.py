@@ -112,9 +112,10 @@ class MyApp(QWidget):
     hasBeenBuilt: bool = False
 
     def getMatchingKanjiFromNote(self, note) -> Generator[str, None, None]:
-        fieldNamePattern = self.fieldNamePatternInput.text()
+        fieldNamePatterns = [p.strip() for p in self.fieldNamePatternInput.text().split(",")]
         matchingFields = [
-            f for f in note.keys() if fnmatch.fnmatch(f, fieldNamePattern)
+            f for f in note.keys() 
+            if any(fnmatch.fnmatch(f, pattern) for pattern in fieldNamePatterns)
         ]
         for matchingField in matchingFields:
             for char in note[matchingField]:
@@ -211,8 +212,9 @@ class MyApp(QWidget):
         self.middleScroll.setWidgetResizable(True)
         self.middleScroll.setWidget(self.settingsGroupBox)
 
-        self.fieldNameGroupBox = MyGroupBox("Field Name")
+        self.fieldNameGroupBox = MyGroupBox("Field Names (comma-separated)")
         self.fieldNamePatternInput = MyQLineEdit("*Kanji*")
+        self.fieldNamePatternInput.setPlaceholderText("e.g. *Kanji*, Expression, Word")
         self.fieldNameGroupBox.layout.addWidget(self.fieldNamePatternInput)
 
         self.filterGroupBox = MyGroupBox("Filter")
